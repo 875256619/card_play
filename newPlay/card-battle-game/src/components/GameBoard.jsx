@@ -27,7 +27,7 @@ const PlaceholderCard = ({ position = "center" }) => (
 // 首先在组件顶部添加一个用于创建新牌堆的函数
 const createNewDeck = () => {
   const colors = ['red', 'blue', 'black'];
-  const values = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+  const values = [2, 3, 4, 5, 6, 7];
   let id = 1;
   const deck = [];
 
@@ -37,15 +37,42 @@ const createNewDeck = () => {
     }
   }
 
-  // 随机打乱牌堆
-  return deck.sort(() => Math.random() - 0.5);
+  // Fisher-Yates 洗牌算法
+  for (let i = deck.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [deck[i], deck[j]] = [deck[j], deck[i]];
+  }
+
+  return deck;
+};
+
+// 创建初始手牌的函数
+const createInitialHand = (deck) => {
+  const hand = [];
+  const colorCounts = { red: 0, blue: 0, black: 0 };
+  
+  // 先为每种颜色选择一张牌
+  for (const color of ['red', 'blue', 'black']) {
+    const cardOfColor = deck.find(card => card.color === color);
+    if (cardOfColor) {
+      hand.push(cardOfColor);
+      colorCounts[color]++;
+      // 从牌堆中移除已选择的牌
+      const index = deck.indexOf(cardOfColor);
+      deck.splice(index, 1);
+    }
+  }
+
+  return hand;
 };
 
 function GameBoard() {
   const [gameState, setGameState] = useState(() => {
     const initialDeck = createNewDeck();
-    const playerHand = [initialDeck.pop(), initialDeck.pop(), initialDeck.pop()];
-    const aiHand = [initialDeck.pop(), initialDeck.pop(), initialDeck.pop()];
+    
+    // 为玩家和AI创建包含三种颜色的初始手牌
+    const playerHand = createInitialHand(initialDeck);
+    const aiHand = createInitialHand(initialDeck);
 
     return {
       playerHealth: 50,
@@ -99,7 +126,7 @@ function GameBoard() {
       }));
 
       // 6. 等待结果展示
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 1200));
 
       // 7. 更新游戏状态
       setGameState(prev => {
@@ -160,7 +187,7 @@ function GameBoard() {
           aiHand: newAIHand,
           deck: currentDeck,
           roundResult: null,
-          gameLog: [...prev.gameLog, roundLog],
+          gameLog: [roundLog, ...prev.gameLog],
           isGameOver: newPlayerHealth <= 0 || newAIHealth <= 0
         };
       });
@@ -174,6 +201,23 @@ function GameBoard() {
 
   const startNewGame = () => {
     setGameState(initializeGameState());
+  };
+
+  const resetGame = () => {
+    const newDeck = createNewDeck();
+    const playerHand = createInitialHand(newDeck);
+    const aiHand = createInitialHand(newDeck);
+
+    setGameState({
+      playerHealth: 50,
+      aiHealth: 50,
+      playerHand,
+      aiHand,
+      deck: newDeck,
+      roundResult: null,
+      gameLog: [],
+      isGameOver: false
+    });
   };
 
   return (
@@ -226,7 +270,8 @@ function GameBoard() {
                   <Card
                     key={card.id}
                     card={card}
-                    isHidden={true}
+                    isHidden={false}
+                    position="ai"
                     custom={index}
                   />
                 ))}
@@ -388,7 +433,7 @@ function GameBoard() {
   );
 }
 
-// 辅助函数：获取颜色名称
+// 辅助函数：获取颜色称
 function getColorName(color) {
   const colorMap = {
     red: '红色',
